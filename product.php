@@ -30,6 +30,15 @@ if($row=$stm->fetch()){
     $price=$row['price'];
     $description=$row['description'];
 }
+$sql = '
+        SELECT pi.name
+        FROM tbl_product_images pi 
+        WHERE pi.product_id=:id
+        ORDER BY pi.priority;
+';
+$stm=$dbh->prepare($sql);
+$stm->execute([':id'=>$id]);
+$images=$stm->fetchAll();
 
 ?>
 
@@ -41,8 +50,17 @@ if($row=$stm->fetch()){
                 <div class="row">
                     <div class="col-md-6">
                         <div class="images p-3">
-                            <div class="text-center p-4"> <img id="main-image" src="https://i.imgur.com/Dhebu4F.jpg" width="250" /> </div>
-                            <div class="thumbnail text-center"> <img onclick="change_image(this)" src="https://i.imgur.com/Rx7uKd0.jpg" width="70"> <img onclick="change_image(this)" src="https://i.imgur.com/Dhebu4F.jpg" width="70"> </div>
+                            <div class="text-center p-4">
+                                <img id="main-image" src="/images/<?php echo $images[0]['name']; ?>" width="250" />
+                            </div>
+                            <div class="thumbnail text-center">
+                                <?php
+                                foreach ($images as $img)
+                                    echo '
+            <img onclick="change_image(this)" src="images/'.$img["name"].'" width="70">
+                                    ';
+                                ?>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
