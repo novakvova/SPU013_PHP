@@ -1,34 +1,42 @@
 <?php
-if($_SERVER["REQUEST_METHOD"]=="POST")
-{
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
     echo "POST REQUEST SERVER";
     $name = $_POST['name'];
     $price = $_POST['price'];
     $description = $_POST['description'];
-    $image = $_FILES['image']['tmp_name'];
-    print_r([$name, $price, $description, $image]);
-    $dir_save='images/'; //папка де будуть зберігатися фотки
-    $image_name =uniqid().'.jpg';
-    $uploadfile = $dir_save.$image_name;
-    if(move_uploaded_file($image, $uploadfile))
-    {
-        echo"Файл успішно збережно";
-        include_once($_SERVER['DOCUMENT_ROOT'].'/options/connection_database.php');
-        $sql = 'INSERT INTO tbl_products (name, image, price, datecrate, description) VALUES (:name, :image, :price, NOW(), :description);';
-        $stmt=$dbh->prepare($sql);
-        $stmt->bindParam(':name', $name);
-        $stmt->bindParam(':price', $price);
-        $stmt->bindParam(':description', $description);
-        $stmt->bindParam(':image', $image_name);
+    include_once($_SERVER['DOCUMENT_ROOT'] . '/options/connection_database.php');
+    $sql = 'INSERT INTO tbl_products (name, price, datecrate, description) VALUES (:name, :price, NOW(), :description);';
+    $stmt = $dbh->prepare($sql);
+    $stmt->bindParam(':name', $name);
+    $stmt->bindParam(':price', $price);
+    $stmt->bindParam(':description', $description);
+    $stmt->execute();
+
+    $sql = "SELECT LAST_INSERT_ID() as id;";
+    $item = $dbh->query($sql)->fetch();
+    $insert_id=$item['id'];
+
+    $images = $_POST['images'];
+    $count=1;
+    foreach ($images as $base64) {
+        $dir_save = 'images/';
+        $image_name = uniqid() . '.jpeg';
+        $uploadfile = $dir_save . $image_name;
+        list(, $data) = explode(',', $base64);
+        $data = base64_decode($data);
+        file_put_contents($uploadfile, $data);
+        $sql = 'INSERT INTO tbl_product_images (name, datecreate, priority, product_id) VALUES(:name, NOW(), :priority, :product_id);';
+        $stmt = $dbh->prepare($sql);
+        $stmt->bindParam(':name', $image_name);
+        $stmt->bindParam(':priority', $count);
+        $stmt->bindParam(':product_id', $insert_id);
         $stmt->execute();
-        header("Location: /");
-        exit();
+        $count++;
     }
-    else
-    {
-        echo"Помилка збережння файлу";
-        exit();
-    }
+
+    header("Location: /");
+    exit();
+
 }
 ?>
 <!doctype html>
@@ -90,21 +98,20 @@ include($_SERVER['DOCUMENT_ROOT'] . '/_header.php');
             (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
         );
     }
-    $(function() {
+
+    $(function () {
         //--------------Show list images select user---------------------
         const image = document.getElementById('image');
-        image.onchange =function (e)
-        {
+        image.onchange = function (e) {
             const files = e.target.files;
 
             //console.log("Select files", files);
-            for(let i=0;i<files.length;i++)
-            {
+            for (let i = 0; i < files.length; i++) {
                 const reader = new FileReader();
-                reader.addEventListener('load', function() {
+                reader.addEventListener('load', function () {
                     const base64 = reader.result;
                     //console.log(base64);
-                    const id =uuidv4();
+                    const id = uuidv4();
                     const data = `
                         <div class="row">
                             <div class="col-6">
@@ -127,34 +134,34 @@ include($_SERVER['DOCUMENT_ROOT'] . '/_header.php');
                 </div>
                 `;
                     const item = document.createElement('div');
-                    item.className='col-md-3 item-image';
-                    item.innerHTML=data;
+                    item.className = 'col-md-3 item-image';
+                    item.innerHTML = data;
                     $("#selectImages").before(item);
 
                 });
                 const file = files[i];
                 reader.readAsDataURL(file);
             }
-            image.value="";
+            image.value = "";
         }
 
         //---------------Remove image---------------
-        $("#list_images").on("click", '.remove', function() {
-           $(this).closest(".item-image").remove();
+        $("#list_images").on("click", '.remove', function () {
+            $(this).closest(".item-image").remove();
         });
         //----------------Change image list item-------------
-        let edit_id=0;
+        let edit_id = 0;
         const reader = new FileReader();
         reader.addEventListener("load", () => {
-           const base64 = reader.result;
-           document.getElementById(`${edit_id}_image`).src=base64;
-           document.getElementById(`${edit_id}_file`).value=base64;
+            const base64 = reader.result;
+            document.getElementById(`${edit_id}_image`).src = base64;
+            document.getElementById(`${edit_id}_file`).value = base64;
         });
-        $("#list_images").on("change", '.edit', function(e) {
-            edit_id=e.target.id;
+        $("#list_images").on("change", '.edit', function (e) {
+            edit_id = e.target.id;
             const file = e.target.files[0];
             reader.readAsDataURL(file);
-            this.value="";
+            this.value = "";
         });
 
     });
